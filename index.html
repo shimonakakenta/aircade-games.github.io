@@ -1,0 +1,334 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>AIrcade マリオ風アクション — AIrcade</title>
+<meta name="description" content="AIが生成したマリオ風プラットフォーマー。5ステージ・敵を踏んでコインを集めてゴールを目指す無料ブラウザゲーム。スマホ対応。">
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+JP:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root{--bg:#07080f;--surface:#0d1021;--card:#111827;--accent:#00f5d4;--accent2:#7B2FFF;--accent3:#FF3CAC;--text:#e8eaf6;--muted:#6b7280;--border:rgba(0,245,212,0.15);}
+*{margin:0;padding:0;box-sizing:border-box;}html{scroll-behavior:smooth;}
+body{background:var(--bg);color:var(--text);font-family:'Noto Sans JP',sans-serif;font-weight:300;overflow-x:hidden;}
+body::before{content:'';position:fixed;inset:0;z-index:0;pointer-events:none;background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,0,0,0.03) 2px,rgba(0,0,0,0.03) 4px);}
+.grid-bg{position:fixed;inset:0;z-index:0;pointer-events:none;background-image:linear-gradient(rgba(0,245,212,0.03) 1px,transparent 1px),linear-gradient(90deg,rgba(0,245,212,0.03) 1px,transparent 1px);background-size:40px 40px;}
+nav{position:sticky;top:0;z-index:100;display:flex;align-items:center;justify-content:space-between;padding:14px 24px;background:rgba(7,8,15,0.9);backdrop-filter:blur(12px);border-bottom:1px solid var(--border);}
+.logo{font-family:'Orbitron',sans-serif;font-size:20px;font-weight:900;color:var(--accent);text-decoration:none;text-shadow:0 0 20px rgba(0,245,212,0.4);}
+.logo span{color:var(--accent3);}
+.breadcrumb{display:flex;align-items:center;gap:8px;font-size:12px;color:var(--muted);}
+.breadcrumb a{color:var(--muted);text-decoration:none;transition:color 0.2s;}
+.breadcrumb a:hover{color:var(--accent);}
+.bc-sep{opacity:0.4;}
+.container{max-width:1100px;margin:0 auto;padding:32px 24px;position:relative;z-index:1;display:grid;grid-template-columns:1fr 300px;gap:32px;}
+@media(max-width:768px){.container{grid-template-columns:1fr;}.sidebar{order:3;}}
+.main{min-width:0;}
+.game-header{margin-bottom:20px;}
+.game-tags{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px;}
+.tag{padding:3px 12px;border-radius:100px;font-family:'Orbitron',sans-serif;font-size:9px;letter-spacing:0.1em;}
+.tag-genre{background:rgba(123,47,255,0.2);color:#a78bfa;border:1px solid rgba(123,47,255,0.3);}
+.tag-ai{background:rgba(0,245,212,0.1);color:var(--accent);border:1px solid rgba(0,245,212,0.2);}
+.tag-free{background:rgba(255,60,172,0.1);color:var(--accent3);border:1px solid rgba(255,60,172,0.2);}
+.game-title{font-family:'Orbitron',sans-serif;font-size:clamp(18px,4vw,30px);font-weight:700;margin-bottom:8px;line-height:1.3;}
+.game-meta-row{display:flex;align-items:center;gap:16px;flex-wrap:wrap;}
+.meta-item{font-size:12px;color:var(--muted);}
+.rating{color:#fbbf24;}
+.ad-banner{background:var(--card);border:1px dashed rgba(0,245,212,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;letter-spacing:0.1em;margin-bottom:20px;}
+.ad-banner-top{height:90px;}.ad-banner-mid{height:250px;}
+.game-frame-wrap{position:relative;border:1px solid var(--border);border-radius:12px;overflow:hidden;margin-bottom:20px;}
+.game-frame-header{display:flex;align-items:center;justify-content:space-between;padding:10px 16px;background:var(--surface);border-bottom:1px solid var(--border);}
+.game-frame-title{font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:0.1em;color:var(--accent);display:flex;align-items:center;gap:8px;}
+.live-dot{width:6px;height:6px;border-radius:50%;background:var(--accent);animation:blink 1s ease-in-out infinite;}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:0.2}}
+.frame-btns{display:flex;gap:8px;}
+.frame-btn{padding:4px 12px;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:10px;font-family:'Orbitron',sans-serif;border-radius:4px;cursor:pointer;transition:all 0.2s;}
+.frame-btn:hover{border-color:var(--accent);color:var(--accent);}
+.game-canvas-wrap{width:100%;position:relative;background:#1a1040;}
+#gameCanvas{display:block;width:100%;height:auto;}
+.touch-btns{position:absolute;bottom:16px;left:0;right:0;display:flex;justify-content:space-between;align-items:flex-end;padding:0 16px;pointer-events:none;}
+.touch-left{display:flex;gap:8px;pointer-events:all;}
+.touch-right{pointer-events:all;}
+.tbtn{width:56px;height:56px;border-radius:50%;background:rgba(255,255,255,0.2);border:2px solid rgba(255,255,255,0.45);display:flex;align-items:center;justify-content:center;font-size:20px;cursor:pointer;transition:background 0.1s;-webkit-tap-highlight-color:transparent;user-select:none;}
+.tbtn:active,.tbtn.pressed{background:rgba(255,255,255,0.45);}
+.tbtn-jump{width:64px;height:64px;background:rgba(255,80,80,0.3);border-color:rgba(255,100,100,0.6);}
+.game-controls-hint{padding:10px 16px;background:var(--surface);border-top:1px solid var(--border);font-size:11px;color:var(--muted);display:flex;gap:16px;flex-wrap:wrap;}
+.hint-item{display:flex;align-items:center;gap:6px;}
+.key{padding:2px 8px;background:var(--card);border:1px solid var(--border);border-radius:4px;font-family:'Orbitron',sans-serif;font-size:9px;color:var(--accent);}
+.tabs{display:flex;margin-bottom:20px;border-bottom:1px solid var(--border);}
+.tab{padding:12px 20px;font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:0.1em;color:var(--muted);cursor:pointer;border-bottom:2px solid transparent;transition:all 0.2s;background:none;border-top:none;border-left:none;border-right:none;}
+.tab.active{color:var(--accent);border-bottom-color:var(--accent);}
+.tab-content{display:none;}.tab-content.active{display:block;}
+.desc-section{margin-bottom:28px;}
+.desc-title{font-size:15px;font-weight:500;margin-bottom:10px;}
+.desc-body{font-size:14px;line-height:2.0;color:rgba(232,234,246,0.75);}
+.desc-body p{margin-bottom:12px;}
+.feature-list{list-style:none;margin:12px 0;}
+.feature-list li{padding:8px 0;border-bottom:1px solid rgba(0,245,212,0.06);font-size:13px;color:rgba(232,234,246,0.7);display:flex;align-items:center;gap:10px;}
+.feature-list li::before{content:'▶';font-size:8px;color:var(--accent);flex-shrink:0;}
+.how-to-play{background:var(--card);border:1px solid var(--border);border-radius:10px;padding:20px;margin-top:16px;}
+.how-title{font-family:'Orbitron',sans-serif;font-size:11px;letter-spacing:0.15em;color:var(--accent);margin-bottom:14px;}
+.how-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;}
+@media(max-width:480px){.how-grid{grid-template-columns:1fr;}}
+.how-item{display:flex;align-items:flex-start;gap:10px;font-size:13px;color:rgba(232,234,246,0.7);}
+.how-key{padding:3px 10px;background:rgba(0,245,212,0.08);border:1px solid rgba(0,245,212,0.2);border-radius:4px;font-family:'Orbitron',sans-serif;font-size:10px;color:var(--accent);flex-shrink:0;font-weight:700;}
+.related-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(200px,1fr));gap:16px;}
+.related-card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;text-decoration:none;color:inherit;transition:all 0.2s;display:block;}
+.related-card:hover{border-color:var(--accent);transform:translateY(-2px);}
+.related-thumb{width:100%;aspect-ratio:16/9;display:flex;align-items:center;justify-content:center;font-size:32px;}
+.rt-1{background:linear-gradient(135deg,#2d5016,#1a3a0a);}
+.rt-2{background:linear-gradient(135deg,#1a0000,#4a0000);}
+.rt-3{background:linear-gradient(135deg,#0d2137,#1a4a2e);}
+.related-info{padding:12px;}
+.related-tag{font-family:'Orbitron',sans-serif;font-size:9px;color:var(--accent2);margin-bottom:4px;}
+.related-name{font-size:13px;font-weight:500;}
+.sidebar-card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:20px;margin-bottom:20px;}
+.sidebar-title{font-family:'Orbitron',sans-serif;font-size:10px;letter-spacing:0.15em;color:var(--accent);margin-bottom:16px;}
+.info-row{display:flex;justify-content:space-between;align-items:center;padding:8px 0;border-bottom:1px solid rgba(0,245,212,0.05);font-size:12px;}
+.info-row:last-child{border-bottom:none;}
+.info-label{color:var(--muted);}.info-val{color:var(--text);font-weight:500;}
+.play-btn{width:100%;padding:14px;background:var(--accent);color:var(--bg);font-family:'Orbitron',sans-serif;font-size:13px;font-weight:700;letter-spacing:0.1em;border:none;border-radius:8px;cursor:pointer;margin-top:16px;transition:all 0.2s;}
+.play-btn:hover{transform:translateY(-2px);box-shadow:0 8px 24px rgba(0,245,212,0.3);}
+.share-btns{display:flex;flex-direction:column;gap:8px;margin-top:12px;}
+.share-btn{width:100%;padding:10px;background:transparent;border:1px solid var(--border);color:var(--muted);font-size:12px;border-radius:6px;cursor:pointer;transition:all 0.2s;display:flex;align-items:center;justify-content:center;gap:8px;}
+.share-btn:hover{border-color:var(--accent);color:var(--accent);}
+.ad-side{background:var(--card);border:1px dashed rgba(0,245,212,0.2);border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--muted);font-size:11px;height:250px;margin-bottom:20px;}
+footer{border-top:1px solid var(--border);padding:32px 24px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;position:relative;z-index:1;max-width:1100px;margin:0 auto;}
+.footer-logo{font-family:'Orbitron',sans-serif;font-size:16px;font-weight:900;color:var(--accent);}
+.footer-logo span{color:var(--accent3);}
+.footer-links{display:flex;gap:20px;}
+.footer-links a{font-size:12px;color:var(--muted);text-decoration:none;}
+.footer-links a:hover{color:var(--accent);}
+.footer-copy{font-size:11px;color:var(--muted);}
+@media(max-width:600px){footer{flex-direction:column;text-align:center;}.footer-links{justify-content:center;}}
+</style>
+</head>
+<body>
+<div class="grid-bg"></div>
+<nav>
+  <a href="index.html" class="logo">AI<span>rcade</span></a>
+  <div class="breadcrumb">
+    <a href="index.html">ホーム</a><span class="bc-sep">›</span>
+    <a href="#">アクション</a><span class="bc-sep">›</span>
+    <span>マリオ風アクション</span>
+  </div>
+</nav>
+
+<div class="container">
+  <div class="main">
+    <div class="ad-banner ad-banner-top">広告</div>
+    <div class="game-header">
+      <div class="game-tags">
+        <span class="tag tag-genre">PLATFORMER</span>
+        <span class="tag tag-ai">AI生成</span>
+        <span class="tag tag-free">無料</span>
+      </div>
+      <h1 class="game-title">AIrcade マリオ風アクション</h1>
+      <div class="game-meta-row">
+        <div class="meta-item">👾 1,243 plays</div>
+        <div class="meta-item"><span class="rating">★</span> 4.2 / 5.0</div>
+        <div class="meta-item">📱 スマホ対応</div>
+        <div class="meta-item">🕒 5〜15分</div>
+      </div>
+    </div>
+
+    <div class="game-frame-wrap">
+      <div class="game-frame-header">
+        <div class="game-frame-title"><div class="live-dot"></div>PLAYING NOW</div>
+        <div class="frame-btns">
+          <button class="frame-btn" onclick="restartGame()">再スタート</button>
+        </div>
+      </div>
+      <div class="game-canvas-wrap">
+        <canvas id="gameCanvas" width="700" height="380"></canvas>
+        <div class="touch-btns">
+          <div class="touch-left">
+            <div class="tbtn" id="btn-left">◀</div>
+            <div class="tbtn" id="btn-right">▶</div>
+          </div>
+          <div class="touch-right">
+            <div class="tbtn tbtn-jump" id="btn-jump">↑</div>
+          </div>
+        </div>
+      </div>
+      <div class="game-controls-hint">
+        <div class="hint-item"><span class="key">← →</span>移動</div>
+        <div class="hint-item"><span class="key">スペース</span>ジャンプ</div>
+        <div class="hint-item"><span class="key">↑</span>ジャンプ</div>
+        <div class="hint-item">📱 画面ボタンで操作可能</div>
+      </div>
+    </div>
+
+    <div class="tabs">
+      <button class="tab active" onclick="switchTab('desc',this)">ゲーム説明</button>
+      <button class="tab" onclick="switchTab('how',this)">遊び方</button>
+      <button class="tab" onclick="switchTab('related',this)">関連ゲーム</button>
+    </div>
+
+    <div class="tab-content active" id="tab-desc">
+      <div class="desc-section">
+        <div class="desc-title">ゲーム概要</div>
+        <div class="desc-body">
+          <p>「AIrcade マリオ風アクション」は、AIが自動生成した横スクロールプラットフォーマーです。全5ステージをクリアしてALL CLEARを目指しましょう。</p>
+          <p>草原・砂漠・雪山・洞窟・城と、ステージごとに異なるテーマとビジュアルで楽しめます。</p>
+        </div>
+      </div>
+      <div class="desc-section">
+        <div class="desc-title">ゲームの特徴</div>
+        <ul class="feature-list">
+          <li>AIが設計した全5ステージ——それぞれ異なるテーマとビジュアル</li>
+          <li>スマホタッチボタン対応——画面上のボタンで操作可能</li>
+          <li>パーティクルエフェクト——コイン取得・敵撃破・ゴール時に演出</li>
+          <li>スコアエフェクト——「+50」「+100」がリアルタイムで表示</li>
+          <li>タイトル画面・ステージ演出——本格的なゲーム体験</li>
+        </ul>
+      </div>
+      <div class="ad-banner ad-banner-mid">広告</div>
+    </div>
+
+    <div class="tab-content" id="tab-how">
+      <div class="how-to-play">
+        <div class="how-title">// 操作方法</div>
+        <div class="how-grid">
+          <div class="how-item"><span class="how-key">←</span>左に移動</div>
+          <div class="how-item"><span class="how-key">→</span>右に移動</div>
+          <div class="how-item"><span class="how-key">SPACE</span>ジャンプ</div>
+          <div class="how-item"><span class="how-key">↑</span>ジャンプ</div>
+          <div class="how-item"><span class="how-key">◀▶</span>スマホ移動ボタン</div>
+          <div class="how-item"><span class="how-key">↑ボタン</span>スマホジャンプ</div>
+        </div>
+      </div>
+      <div class="desc-section" style="margin-top:24px;">
+        <div class="desc-title">攻略のコツ</div>
+        <div class="desc-body">
+          <p>敵の頭の上にジャンプして踏みつけると倒せます。コインはプラットフォームの上や空中に配置されています。ライフは3つ。慎重に進みましょう。</p>
+        </div>
+      </div>
+    </div>
+
+    <div class="tab-content" id="tab-related">
+      <div class="related-grid">
+        <a href="aircade_kart.html" class="related-card">
+          <div class="related-thumb rt-1">🏎️</div>
+          <div class="related-info"><div class="related-tag">RACING</div><div class="related-name">AIrcade カートレーシング</div></div>
+        </a>
+        <a href="#" class="related-card">
+          <div class="related-thumb rt-2">🐍</div>
+          <div class="related-info"><div class="related-tag">CASUAL</div><div class="related-name">AI スネークゲーム</div></div>
+        </a>
+        <a href="#" class="related-card">
+          <div class="related-thumb rt-3">🚀</div>
+          <div class="related-info"><div class="related-tag">SHOOTER</div><div class="related-name">スペースシューター AI</div></div>
+        </a>
+      </div>
+    </div>
+  </div>
+
+  <div class="sidebar">
+    <div class="ad-side">広告</div>
+    <div class="sidebar-card">
+      <div class="sidebar-title">// GAME INFO</div>
+      <div class="info-row"><span class="info-label">ジャンル</span><span class="info-val">プラットフォーマー</span></div>
+      <div class="info-row"><span class="info-label">制作</span><span class="info-val">AI生成</span></div>
+      <div class="info-row"><span class="info-label">ステージ数</span><span class="info-val">5ステージ</span></div>
+      <div class="info-row"><span class="info-label">プレイ時間</span><span class="info-val">5〜15分</span></div>
+      <div class="info-row"><span class="info-label">スマホ対応</span><span class="info-val">✅ 対応済み</span></div>
+      <div class="info-row"><span class="info-label">追加日</span><span class="info-val">2026.04.11</span></div>
+      <button class="play-btn" onclick="document.getElementById('gameCanvas').scrollIntoView({behavior:'smooth'})">▶ 今すぐプレイ</button>
+    </div>
+    <div class="sidebar-card">
+      <div class="sidebar-title">// SHARE</div>
+      <div class="share-btns">
+        <button class="share-btn" onclick="shareX()">𝕏 Xでシェア</button>
+        <button class="share-btn" onclick="copyURL()">📋 URLをコピー</button>
+      </div>
+    </div>
+    <div class="ad-side">広告</div>
+  </div>
+</div>
+
+<footer>
+  <div class="footer-logo">AI<span>rcade</span></div>
+  <div class="footer-links">
+    <a href="aircade_privacy.html">プライバシーポリシー</a>
+    <a href="aircade_contact.html">お問い合わせ</a>
+    <a href="index.html">ゲーム一覧</a>
+  </div>
+  <div class="footer-copy">© 2026 AIrcade. All rights reserved.</div>
+</footer>
+
+<script>
+const cv=document.getElementById('gameCanvas'),ctx=cv.getContext('2d');
+const W=700,H=380,G=0.48;
+cv.width=W;cv.height=H;
+const STAGES=[
+  {name:'1-1',theme:'草原',sky:'#5C94FC',gr:'#228B22',dirt:'#8B6914',GR:H-40,plats:[[0,H-40,500,40,'g'],[560,H-40,600,40,'g'],[1200,H-40,800,40,'g'],[150,H-110,80,14,'b'],[280,H-150,80,14,'b'],[420,H-120,80,14,'b'],[560,H-160,80,14,'b'],[700,H-110,80,14,'b'],[850,H-140,100,14,'b'],[1020,H-120,80,14,'b'],[1200,H-160,80,14,'b'],[1380,H-110,120,14,'b']],ens:[[260,H-64,1],[480,H-64,1.2],[750,H-64,1],[950,H-64,1.5],[1250,H-64,1],[860,H-164,1]],coins:[[170,H-130],[310,H-170],[450,H-140],[580,H-180],[720,H-130],[870,H-160],[1050,H-140],[1400,H-130]],goal:[1850,H-220]},
+  {name:'1-2',theme:'砂漠',sky:'#E8C87A',gr:'#C8A464',dirt:'#A07828',GR:H-40,plats:[[0,H-40,300,40,'g'],[380,H-40,300,40,'g'],[750,H-40,300,40,'g'],[1120,H-40,900,40,'g'],[100,H-100,60,14,'b'],[220,H-150,60,14,'b'],[400,H-120,80,14,'b'],[520,H-160,60,14,'b'],[650,H-100,80,14,'b'],[800,H-140,60,14,'b'],[950,H-100,80,14,'b'],[1100,H-170,80,14,'b'],[1280,H-120,100,14,'b'],[1460,H-150,80,14,'b'],[1640,H-100,80,14,'b']],ens:[[150,H-64,1.2],[420,H-64,1.4],[680,H-64,1],[820,H-64,1.5],[1000,H-64,1.2],[1200,H-64,1],[1400,H-64,1.5],[1600,H-64,1.2],[410,H-140,1],[1110,H-190,1]],coins:[[110,H-120],[240,H-170],[420,H-140],[540,H-180],[660,H-120],[810,H-160],[960,H-120],[1110,H-190],[1290,H-140],[1660,H-120]],goal:[1950,H-220]},
+  {name:'1-3',theme:'雪山',sky:'#B8D4F0',gr:'#C8E8FF',dirt:'#8088A8',GR:H-40,plats:[[0,H-40,200,40,'g'],[280,H-40,150,40,'g'],[510,H-40,200,40,'g'],[790,H-40,200,40,'g'],[1070,H-40,200,40,'g'],[1350,H-40,700,40,'g'],[80,H-90,60,14,'b'],[180,H-140,60,14,'b'],[320,H-100,60,14,'b'],[430,H-150,80,14,'b'],[560,H-110,60,14,'b'],[660,H-160,60,14,'b'],[820,H-100,60,14,'b'],[930,H-150,80,14,'b'],[1100,H-110,60,14,'b'],[1220,H-170,80,14,'b'],[1400,H-130,100,14,'b'],[1580,H-110,80,14,'b'],[1750,H-160,80,14,'b']],ens:[[200,H-64,1.3],[430,H-64,1],[640,H-64,1.5],[850,H-64,1.2],[1130,H-64,1],[1400,H-64,1.5],[1600,H-64,1.2],[1800,H-64,1],[440,H-170,1.2],[1230,H-190,1.2],[1760,H-180,1]],coins:[[90,H-110],[190,H-160],[330,H-120],[450,H-170],[570,H-130],[670,H-180],[830,H-120],[940,H-170],[1110,H-130],[1230,H-190],[1410,H-150],[1590,H-130],[1760,H-180]],goal:[2050,H-220]},
+  {name:'1-4',theme:'洞窟',sky:'#1A1A2E',gr:'#3A2A1A',dirt:'#221A0A',GR:H-40,plats:[[0,H-40,250,40,'g'],[330,H-40,200,40,'g'],[620,H-40,200,40,'g'],[910,H-40,200,40,'g'],[1200,H-40,200,40,'g'],[1490,H-40,600,40,'g'],[60,H-80,50,14,'b'],[160,H-130,50,14,'b'],[270,H-80,60,14,'b'],[380,H-120,60,14,'b'],[480,H-170,50,14,'b'],[570,H-100,60,14,'b'],[670,H-150,60,14,'b'],[760,H-100,50,14,'b'],[870,H-160,50,14,'b'],[960,H-110,60,14,'b'],[1060,H-160,80,14,'b'],[1170,H-110,60,14,'b'],[1270,H-170,60,14,'b'],[1380,H-110,60,14,'b'],[1500,H-160,80,14,'b'],[1660,H-120,80,14,'b'],[1820,H-170,80,14,'b']],ens:[[180,H-64,1.5],[400,H-64,1.3],[640,H-64,1.5],[930,H-64,1.3],[1220,H-64,1.5],[1500,H-64,1.3],[1700,H-64,1.5],[170,H-150,1.2],[490,H-190,1.2],[1070,H-180,1.2],[1510,H-180,1.5],[1830,H-190,1.2]],coins:[[70,H-100],[170,H-150],[280,H-100],[390,H-140],[490,H-190],[580,H-120],[680,H-170],[870,H-120],[970,H-130],[1070,H-180],[1180,H-130],[1280,H-190],[1510,H-180],[1670,H-140],[1830,H-190]],goal:[2150,H-220]},
+  {name:'1-5',theme:'城',sky:'#2C1810',gr:'#666',dirt:'#333',GR:H-40,plats:[[0,H-40,200,40,'g'],[300,H-40,200,40,'g'],[600,H-40,200,40,'g'],[900,H-40,200,40,'g'],[1200,H-40,200,40,'g'],[1500,H-40,700,40,'g'],[50,H-80,50,14,'b'],[150,H-140,50,14,'b'],[260,H-90,60,14,'b'],[360,H-150,60,14,'b'],[470,H-90,50,14,'b'],[560,H-160,50,14,'b'],[660,H-100,60,14,'b'],[770,H-160,60,14,'b'],[870,H-100,50,14,'b'],[980,H-170,50,14,'b'],[1080,H-110,60,14,'b'],[1190,H-170,60,14,'b'],[1310,H-110,50,14,'b'],[1420,H-180,60,14,'b'],[1540,H-140,80,14,'b'],[1700,H-100,80,14,'b'],[1860,H-160,80,14,'b'],[2000,H-120,80,14,'b']],ens:[[200,H-64,1.8],[430,H-64,1.6],[680,H-64,1.8],[970,H-64,1.6],[1250,H-64,1.8],[1540,H-64,1.6],[1750,H-64,1.8],[2050,H-64,2],[160,H-160,1.5],[370,H-170,1.5],[580,H-180,1.5],[790,H-180,1.5],[990,H-190,1.5],[1200,H-190,1.5],[1430,H-200,1.5],[1870,H-180,1.5],[2010,H-140,1.5]],coins:[[60,H-100],[160,H-160],[270,H-110],[370,H-170],[480,H-110],[570,H-180],[670,H-120],[780,H-180],[880,H-120],[990,H-190],[1090,H-130],[1200,H-190],[1320,H-130],[1430,H-200],[1550,H-160],[1710,H-120],[1870,H-180],[2010,H-140]],goal:[2300,H-220]},
+];
+let keys={},score=0,lives=3,coins=0,state='title',camX=0,stageIdx=0;
+let P,plats,ens,coinList,goal,particles=[],titleAnim=0,stageAnim=0,clearAnim=0,effectMsg=null,effectTimer=0;
+function spawnP(x,y,col,n=8){for(let i=0;i<n;i++){const a=Math.random()*Math.PI*2,s=2+Math.random()*4;particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s-3,life:30,col,size:4+Math.random()*4});}}
+function showFX(msg){effectMsg=msg;effectTimer=90;}
+function loadStage(i){const s=STAGES[i];camX=0;P={x:80,y:s.GR-32,w:24,h:32,vx:0,vy:0,onG:false,dead:false,inv:0,dir:1,fr:0,ft:0};plats=s.plats.map(([x,y,w,h,t])=>({x,y,w,h,t}));ens=s.ens.map(([x,y,spd])=>({x,y,w:24,h:24,vx:-spd,alive:true,vy:0,fr:0,ft:0}));coinList=s.coins.map(([x,y])=>({x,y,w:14,h:14,got:false,ay:0}));goal={x:s.goal[0],y:H-220,w:28,h:180,got:false};particles=[];stageAnim=60;state='stagein';}
+function overlap(a,b){return a.x<b.x+b.w&&a.x+a.w>b.x&&a.y<b.y+b.h&&a.y+a.h>b.y;}
+function collide(obj){obj.onG=false;for(let p of plats){if(!p.w)continue;if(obj.x+obj.w>p.x&&obj.x<p.x+p.w&&obj.vy>=0&&obj.y+obj.h>p.y&&obj.y+obj.h<p.y+p.h+8){obj.y=p.y-obj.h;obj.vy=0;obj.onG=true;}}}
+function die(){if(P.inv>0)return;lives--;spawnP(P.x+12,P.y+16,'#E24B4A',12);if(lives<=0){state='gameover';}else{P.dead=true;P.inv=90;P.vy=-12;P.vx=0;}}
+function respawn(){const s=STAGES[stageIdx];P.x=80;P.y=s.GR-32;P.vx=0;P.vy=0;P.dead=false;P.inv=60;camX=0;state='play';}
+function update(){
+  titleAnim++;
+  if(state==='title'||state==='gameover'||state==='allclear')return;
+  if(state==='stagein'){stageAnim--;if(stageAnim<=0)state='play';return;}
+  if(effectTimer>0)effectTimer--;
+  particles.forEach(p=>{p.x+=p.vx;p.y+=p.vy;p.vy+=0.2;p.life--;p.size*=0.95;});
+  particles=particles.filter(p=>p.life>0);
+  if(state==='stageclear'){clearAnim++;if(clearAnim>120){stageIdx++;if(stageIdx>=STAGES.length){state='allclear';}else{loadStage(stageIdx);}}return;}
+  if(P.dead){P.vy+=G;P.y+=P.vy;P.inv--;if(P.inv<=0)respawn();return;}
+  if(P.inv>0)P.inv--;
+  if(keys['ArrowLeft']||keys['a']||keys['ml']){P.vx=-3.5;P.dir=-1;}
+  else if(keys['ArrowRight']||keys['d']||keys['mr']){P.vx=3.5;P.dir=1;}
+  else P.vx*=0.75;
+  if((keys[' ']||keys['ArrowUp']||keys['w']||keys['mj'])&&P.onG){P.vy=-11;P.onG=false;}
+  P.vy+=G;P.x+=P.vx;P.y+=P.vy;
+  P.ft++;if(P.ft>8){P.fr=1-P.fr;P.ft=0;}
+  collide(P);if(P.x<0)P.x=0;if(P.y>H+80){die();return;}
+  for(let e of ens){if(!e.alive)continue;e.x+=e.vx;e.vy+=G;e.y+=e.vy;e.ft++;if(e.ft>12){e.fr=1-e.fr;e.ft=0;}collide(e);if(e.y>H+80){e.alive=false;continue;}if(e.onG){let el=false,er=false;for(let p of plats){if(!p.w)continue;if(e.x-2>=p.x&&e.x-2<p.x+p.w&&e.y+e.h>=p.y&&e.y+e.h<=p.y+p.h+2)el=true;if(e.x+e.w+2>p.x&&e.x+e.w+2<=p.x+p.w&&e.y+e.h>=p.y&&e.y+e.h<=p.y+p.h+2)er=true;}if(e.vx<0&&!el)e.vx*=-1;if(e.vx>0&&!er)e.vx*=-1;}if(P.inv===0&&overlap(P,{x:e.x,y:e.y,w:e.w,h:e.h})){if(P.vy>0&&P.y+P.h<e.y+e.h*0.6+4){e.alive=false;score+=100;P.vy=-8;spawnP(e.x+12,e.y,'#A0522D',6);showFX('+100');}else die();}}
+  coinList.forEach(c=>{if(c.got)return;c.ay=Math.sin(Date.now()/400+c.x)*3;if(overlap(P,{x:c.x,y:c.y,w:c.w,h:c.h})){c.got=true;coins++;score+=50;spawnP(c.x+7,c.y+7,'#EF9F27',5);showFX('+50');}});
+  if(!goal.got&&overlap(P,goal)){goal.got=true;score+=500+stageIdx*200;state='stageclear';clearAnim=0;spawnP(goal.x+14,goal.y+90,'#FFD700',20);}
+  camX=Math.max(0,P.x-W/3);
+}
+function drawCloud(x,y,s){ctx.fillStyle='rgba(255,255,255,0.88)';ctx.beginPath();ctx.arc(x,y,14*s,0,Math.PI*2);ctx.arc(x+18*s,y-6*s,18*s,0,Math.PI*2);ctx.arc(x+38*s,y,14*s,0,Math.PI*2);ctx.fill();}
+function drawBg(){const s=STAGES[stageIdx];ctx.fillStyle=s.sky;ctx.fillRect(0,0,W,H);if(s.sky!=='#1A1A2E'&&s.sky!=='#2C1810'){const cx=camX*0.2;drawCloud((80-cx%W+W*2)%W,40,1);drawCloud((320-cx%W+W*2)%W,55,0.85);drawCloud((560-cx%W+W*2)%W,35,1.1);if(s.sky==='#E8C87A'){ctx.fillStyle='#D4A030';ctx.beginPath();ctx.arc(W-60,50,28,0,Math.PI*2);ctx.fill();}if(s.sky==='#B8D4F0'){ctx.fillStyle='rgba(255,255,255,0.4)';for(let i=0;i<5;i++)ctx.fillRect(60+i*130-(camX*0.1%650),15,80,10);}}else{for(let i=0;i<30;i++){ctx.fillStyle='rgba(255,255,200,0.6)';ctx.fillRect((i*173+stageIdx*50)%W,((i*97)%100)+5,2,2);}}}
+function drawPlat(p){const px=p.x-camX;if(px+p.w<0||px>W)return;const s=STAGES[stageIdx];if(p.t==='g'){ctx.fillStyle=s.gr;ctx.fillRect(px,p.y,p.w,12);ctx.fillStyle=s.dirt;ctx.fillRect(px,p.y+12,p.w,p.h-12);}else{ctx.fillStyle='#C8A464';ctx.fillRect(px,p.y,p.w,p.h);ctx.fillStyle='#D4A96A';ctx.fillRect(px+2,p.y+2,p.w-4,4);ctx.strokeStyle='#A0522D';ctx.lineWidth=0.5;ctx.strokeRect(px,p.y,p.w,p.h);}}
+function drawEnemy(e){if(!e.alive)return;const x=e.x-camX,y=e.y;if(x<-30||x>W+30)return;const col=stageIdx===4?'#8B0000':stageIdx===3?'#4A3A6A':'#A0522D',col2=stageIdx===4?'#CC3333':stageIdx===3?'#6A5A9A':'#D2691E';ctx.fillStyle=col;ctx.fillRect(x+2,y,20,18);ctx.fillStyle=col2;ctx.fillRect(x,y+18,24,6);ctx.fillStyle='#F5DEB3';ctx.fillRect(x+4,y+3,6,9);ctx.fillRect(x+14,y+3,6,9);ctx.fillStyle='#111';ctx.fillRect(x+6,y+7,3,3);ctx.fillRect(x+15,y+7,3,3);ctx.fillStyle=col;if(e.fr===0){ctx.fillRect(x,y+24,9,5);ctx.fillRect(x+15,y+24,9,5);}else{ctx.fillRect(x-2,y+24,9,5);ctx.fillRect(x+17,y+24,9,5);}}
+function drawCoin(c){if(c.got)return;const x=c.x-camX,y=c.y+(c.ay||0);if(x<-20||x>W+20)return;ctx.fillStyle='#EF9F27';ctx.beginPath();ctx.arc(x+7,y+7,6,0,Math.PI*2);ctx.fill();ctx.fillStyle='#FAC775';ctx.beginPath();ctx.arc(x+5,y+5,2.5,0,Math.PI*2);ctx.fill();}
+function drawGoal(){if(goal.got)return;const x=goal.x-camX;if(x<-40||x>W+40)return;ctx.fillStyle='#555';ctx.fillRect(x+12,goal.y,4,goal.h);const wave=Math.sin(Date.now()/200)*3;ctx.fillStyle='#E24B4A';ctx.beginPath();ctx.moveTo(x+16,goal.y+4);ctx.lineTo(x+26+wave,goal.y+10);ctx.lineTo(x+16,goal.y+18);ctx.fill();ctx.fillStyle='#fff';ctx.font='bold 8px monospace';ctx.fillText('GOAL',x+2,goal.y+32);}
+function drawMario(){const inv=P.inv;if(inv>0&&Math.floor(inv/5)%2===0)return;const x=Math.round(P.x-camX),y=Math.round(P.y),dir=P.dir,fr=P.fr;ctx.save();if(dir<0){ctx.translate(x+12,0);ctx.scale(-1,1);ctx.translate(-x-12,0);}ctx.fillStyle='#E24B4A';ctx.fillRect(x+2,y,20,13);ctx.fillStyle='#F5C4B3';ctx.fillRect(x+2,y+13,20,12);ctx.fillRect(x+5,y+3,15,10);ctx.fillStyle='#185FA5';ctx.fillRect(x,y+25,24,7);ctx.fillStyle='#E24B4A';ctx.fillRect(x-2,y+2,6,4);if(fr===0){ctx.fillStyle='#F5C4B3';ctx.fillRect(x,y+19,8,6);ctx.fillRect(x+16,y+19,8,6);ctx.fillStyle='#442E00';ctx.fillRect(x,y+25,8,7);ctx.fillRect(x+16,y+25,8,7);}else{ctx.fillStyle='#F5C4B3';ctx.fillRect(x-2,y+21,8,6);ctx.fillRect(x+18,y+21,8,6);ctx.fillStyle='#442E00';ctx.fillRect(x-2,y+27,8,5);ctx.fillRect(x+18,y+27,8,5);}ctx.fillStyle='#442E00';ctx.fillRect(x+4,y+11,4,4);ctx.fillRect(x+16,y+11,4,4);ctx.restore();}
+function drawParticles(){particles.forEach(p=>{ctx.globalAlpha=p.life/30;ctx.fillStyle=p.col;ctx.beginPath();ctx.arc(p.x,p.y,p.size,0,Math.PI*2);ctx.fill();});ctx.globalAlpha=1;}
+function drawHUD(){ctx.fillStyle='rgba(0,0,0,0.45)';ctx.fillRect(0,0,W,32);ctx.fillStyle='#fff';ctx.font='bold 13px monospace';ctx.fillText('❤️ x'+lives,10,22);ctx.textAlign='center';ctx.fillText('SCORE: '+score,W/2,22);ctx.textAlign='right';ctx.fillText('🪙 x'+coins,W-10,22);ctx.textAlign='left';const s=STAGES[stageIdx];ctx.fillStyle='rgba(255,255,255,0.45)';ctx.font='10px monospace';ctx.fillText(s.name+' '+s.theme,10,H-8);}
+function drawFX(){if(!effectMsg||effectTimer<=0)return;const alpha=Math.min(effectTimer/30,1),y=H/2-50-(90-effectTimer)*0.5;ctx.globalAlpha=alpha;ctx.fillStyle='#FFD700';ctx.font='bold 28px monospace';ctx.textAlign='center';ctx.fillText(effectMsg,W/2,y);ctx.globalAlpha=1;ctx.textAlign='left';}
+function drawTitle(){ctx.fillStyle='#1a1040';ctx.fillRect(0,0,W,H);for(let i=0;i<50;i++){ctx.fillStyle='rgba(255,255,255,0.5)';ctx.fillRect((i*173)%W,(i*97)%H,2,2);}const t=Math.sin(titleAnim/30)*4;ctx.fillStyle='#FFD700';ctx.font='bold 60px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('AIrcade',W/2,H/2-60+t);ctx.fillStyle='#fff';ctx.font='bold 22px monospace';ctx.fillText('マリオ風アクション',W/2,H/2-10);if(Math.floor(titleAnim/30)%2===0){ctx.fillStyle='#00f5d4';ctx.font='15px monospace';ctx.fillText('スペース / タップ / ジャンプボタンでスタート',W/2,H/2+55);}ctx.textAlign='left';ctx.textBaseline='alphabetic';}
+function drawStageIn(){drawBg();plats.forEach(drawPlat);ctx.fillStyle='rgba(0,0,0,0.6)';ctx.fillRect(0,0,W,H);const s=STAGES[stageIdx];ctx.fillStyle='#FFD700';ctx.font='bold 36px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(s.name+' — '+s.theme,W/2,H/2);ctx.textAlign='left';ctx.textBaseline='alphabetic';}
+function drawStageClear(){drawBg();plats.forEach(drawPlat);coinList.forEach(drawCoin);drawGoal();drawMario();drawParticles();ctx.fillStyle='rgba(0,0,0,0.5)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#FFD700';ctx.font='bold 48px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('STAGE CLEAR!',W/2,H/2-20);ctx.fillStyle='#fff';ctx.font='20px monospace';ctx.fillText('SCORE: '+score,W/2,H/2+30);ctx.textAlign='left';ctx.textBaseline='alphabetic';}
+function drawGameOver(){ctx.fillStyle='rgba(0,0,0,0.85)';ctx.fillRect(0,0,W,H);ctx.fillStyle='#E24B4A';ctx.font='bold 52px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('GAME OVER',W/2,H/2-30);ctx.fillStyle='#fff';ctx.font='18px monospace';ctx.fillText('SCORE: '+score,W/2,H/2+20);if(Math.floor(titleAnim/30)%2===0){ctx.fillStyle='#00f5d4';ctx.font='13px monospace';ctx.fillText('スペース / タップ / ジャンプボタンでリトライ',W/2,H/2+60);}ctx.textAlign='left';ctx.textBaseline='alphabetic';}
+function drawAllClear(){ctx.fillStyle='#0a0020';ctx.fillRect(0,0,W,H);for(let i=0;i<80;i++){const x=(i*173+titleAnim*2)%W,y=(i*97+titleAnim)%H;ctx.fillStyle=`hsl(${(i*30+titleAnim*3)%360},100%,70%)`;ctx.beginPath();ctx.arc(x,y,3,0,Math.PI*2);ctx.fill();}ctx.fillStyle='#FFD700';ctx.font='bold 48px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText('ALL CLEAR!!',W/2,H/2-40);ctx.fillStyle='#fff';ctx.font='22px monospace';ctx.fillText('FINAL SCORE: '+score,W/2,H/2+10);if(Math.floor(titleAnim/30)%2===0){ctx.fillStyle='#00f5d4';ctx.font='13px monospace';ctx.fillText('スペース / タップ でもう一度',W/2,H/2+60);}ctx.textAlign='left';ctx.textBaseline='alphabetic';}
+function draw(){ctx.clearRect(0,0,W,H);if(state==='title'){drawTitle();return;}if(state==='gameover'){drawGameOver();return;}if(state==='allclear'){drawAllClear();return;}if(state==='stagein'){drawStageIn();return;}drawBg();plats.forEach(drawPlat);drawGoal();coinList.forEach(drawCoin);ens.forEach(drawEnemy);drawMario();drawParticles();drawHUD();drawFX();if(state==='stageclear')drawStageClear();}
+function startGame(){score=0;lives=3;coins=0;stageIdx=0;loadStage(0);}
+window.restartGame=function(){score=0;lives=3;coins=0;stageIdx=0;state='title';};
+let lt=0;function loop(ts){if(ts-lt>=16){update();draw();lt=ts;}requestAnimationFrame(loop);}
+document.addEventListener('keydown',e=>{keys[e.key]=true;if([' ','ArrowUp','ArrowDown','ArrowLeft','ArrowRight'].includes(e.key))e.preventDefault();if(e.key===' '||e.key==='ArrowUp'){if(state==='title')startGame();else if(state==='gameover'){score=0;lives=3;coins=0;stageIdx=0;loadStage(0);}else if(state==='allclear'){score=0;lives=3;coins=0;stageIdx=0;state='title';}}});
+document.addEventListener('keyup',e=>{keys[e.key]=false;});
+const btnL=document.getElementById('btn-left'),btnR=document.getElementById('btn-right'),btnJ=document.getElementById('btn-jump');
+function addBtn(btn,key){btn.addEventListener('touchstart',e=>{e.preventDefault();keys[key]=true;btn.classList.add('pressed');},{passive:false});btn.addEventListener('touchend',e=>{e.preventDefault();keys[key]=false;btn.classList.remove('pressed');},{passive:false});btn.addEventListener('mousedown',()=>{keys[key]=true;btn.classList.add('pressed');});btn.addEventListener('mouseup',()=>{keys[key]=false;btn.classList.remove('pressed');});}
+addBtn(btnL,'ml');addBtn(btnR,'mr');
+btnJ.addEventListener('touchstart',e=>{e.preventDefault();if(state==='title')startGame();else if(state==='gameover'){score=0;lives=3;coins=0;stageIdx=0;loadStage(0);}else if(state==='allclear'){score=0;lives=3;coins=0;stageIdx=0;state='title';}else{keys['mj']=true;btnJ.classList.add('pressed');}},{passive:false});
+btnJ.addEventListener('touchend',e=>{e.preventDefault();keys['mj']=false;btnJ.classList.remove('pressed');},{passive:false});
+btnJ.addEventListener('mousedown',()=>{if(state==='title')startGame();else if(state==='gameover'){score=0;lives=3;coins=0;stageIdx=0;loadStage(0);}else if(state==='allclear'){score=0;lives=3;coins=0;stageIdx=0;state='title';}else{keys['mj']=true;btnJ.classList.add('pressed');}});
+btnJ.addEventListener('mouseup',()=>{keys['mj']=false;btnJ.classList.remove('pressed');});
+requestAnimationFrame(loop);
+function switchTab(id,btn){document.querySelectorAll('.tab-content').forEach(t=>t.classList.remove('active'));document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.getElementById('tab-'+id).classList.add('active');btn.classList.add('active');}
+function shareX(){const url=encodeURIComponent(location.href),text=encodeURIComponent('AIが作ったマリオ風ゲームで遊んでみた！#AIrcade #ブラウザゲーム');window.open(`https://twitter.com/intent/tweet?text=${text}&url=${url}`);}
+function copyURL(){navigator.clipboard&&navigator.clipboard.writeText(location.href).then(()=>alert('URLをコピーしました！'));}
+</script>
+</body>
+</html>
